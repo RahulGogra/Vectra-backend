@@ -78,6 +78,35 @@ class WorkspaceViewSet(viewsets.ModelViewSet):
             role='member',
             status='pending'
         )
+        
+        # Dispatch Real-Time Notification
+        from notifications.models import Notification
+        from channels.layers import get_channel_layer
+        from asgiref.sync import async_to_sync
+        
+        notification = Notification.objects.create(
+            user=target_user,
+            title="Workspace Invitation",
+            message=f"{request.user.first_name or request.user.email} invited you to join '{workspace.name}'.",
+            type="invite"
+        )
+        
+        channel_layer = get_channel_layer()
+        async_to_sync(channel_layer.group_send)(
+            f"user_{target_user.id}",
+            {
+                "type": "notification",
+                "data": {
+                    "id": str(notification.id),
+                    "title": notification.title,
+                    "message": notification.message,
+                    "type": notification.type,
+                    "is_read": notification.is_read,
+                    "created_at": notification.created_at.isoformat()
+                }
+            }
+        )
+
         return Response({"message": "Invitation sent successfully."}, status=status.HTTP_201_CREATED)
 
     @action(detail=True, methods=['post'], url_path='accept-invite')

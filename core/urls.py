@@ -34,4 +34,5 @@ urlpatterns = [
     path('api/auth/me/', MeView.as_view(), name='me'),
     path('api/', include(router.urls)),
     path('api/payments/', include('payments.urls')),
+    path('api/notifications/', include('notifications.urls')),
 ]
