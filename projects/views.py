@@ -5,9 +5,12 @@ from workspaces.models import WorkspaceMember
 from .models import Project
 from .serializers import ProjectSerializer
 from workspaces.permissions import IsWorkspaceAdminOrOwner
+from django_filters.rest_framework import DjangoFilterBackend
 
 class ProjectViewSet(viewsets.ModelViewSet):
     serializer_class = ProjectSerializer
+    filter_backends = [DjangoFilterBackend]
+    filterset_fields = ['workspace']
     
     def get_permissions(self):
         if self.action in ['update', 'partial_update', 'destroy']:

@@ -11,8 +11,13 @@ class IsWorkspaceOwner(permissions.BasePermission):
             return True
             
         # Determine the workspace based on the object type
-        # If it's a Workspace object, use it directly. If it's a Project/Task, get its workspace.
-        workspace = obj if hasattr(obj, 'slug') else obj.workspace
+        # If it's a Workspace object, use it directly. If it's a Task, get its project's workspace. Otherwise, assume it has a workspace attribute (Project, WorkspaceMember).
+        if hasattr(obj, 'slug'):
+            workspace = obj
+        elif hasattr(obj, 'project'):
+            workspace = obj.project.workspace
+        else:
+            workspace = obj.workspace
         
         return WorkspaceMember.objects.filter(
             workspace=workspace, 
@@ -28,7 +33,12 @@ class IsWorkspaceAdminOrOwner(permissions.BasePermission):
         if request.method in permissions.SAFE_METHODS:
             return True
             
-        workspace = obj if hasattr(obj, 'slug') else obj.workspace
+        if hasattr(obj, 'slug'):
+            workspace = obj
+        elif hasattr(obj, 'project'):
+            workspace = obj.project.workspace
+        else:
+            workspace = obj.workspace
         
         return WorkspaceMember.objects.filter(
             workspace=workspace, 

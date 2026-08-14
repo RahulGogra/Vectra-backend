@@ -3,6 +3,9 @@ from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
+from workspaces.permissions import IsWorkspaceAdminOrOwner
+from workspaces.models import Workspace, WorkspaceMember
+from django.db.models import Q
 from django.db import transaction
 from .models import Task
 from .serializers import TaskSerializer
@@ -11,10 +14,27 @@ from rest_framework.filters import SearchFilter, OrderingFilter
 
 class TaskViewSet(viewsets.ModelViewSet):
     serializer_class = TaskSerializer
-    permission_classes = [IsAuthenticated]
+
+    def get_permissions(self):
+        if self.action == 'destroy':
+            permission_classes = [IsAuthenticated, IsWorkspaceAdminOrOwner]
+        else:
+            permission_classes = [IsAuthenticated]
+        return [permission() for permission in permission_classes]
 
     def get_queryset(self):
-        return Task.objects.filter(project__workspace__members__user=self.request.user)
+        user = self.request.user
+        base_qs = Task.objects.filter(project__workspace__members__user=user)
+
+        # Workspaces where user is admin or owner
+        admin_workspaces = Workspace.objects.filter(members__user=user, members__role__in=['owner', 'admin'])
+
+        # Filter: User must be Admin/Owner of the workspace, OR the task assignee, OR the task creator
+        return base_qs.filter(
+            Q(project__workspace__in=admin_workspaces) | 
+            Q(assignee=user) | 
+            Q(created_by=user)
+        ).distinct()
 
     def perform_create(self, serializer):
         serializer.save(created_by=self.request.user)
