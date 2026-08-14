@@ -33,13 +33,21 @@ class WorkspaceViewSet(viewsets.ModelViewSet):
         return Workspace.objects.filter(members__user=self.request.user)
 
     def perform_create(self, serializer):
+        user = self.request.user
+        # Check if user is on free plan and already owns a workspace
+        if user.plan == 'free':
+            owned_workspaces = WorkspaceMember.objects.filter(user=user, role='owner').count()
+            if owned_workspaces >= 1:
+                from rest_framework.exceptions import PermissionDenied
+                raise PermissionDenied("Free users can only create one workspace. Please upgrade to Pro to create more.")
+
         # Save the new workspace
         workspace = serializer.save()
         
         # Automatically make the creator the owner
         WorkspaceMember.objects.create(
             workspace=workspace, 
-            user=self.request.user, 
+            user=user, 
             role='owner'
         )
 

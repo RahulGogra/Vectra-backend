@@ -53,6 +53,7 @@ INSTALLED_APPS = [
     'workspaces',
     'projects',
     'tasks',
+    'payments',
     'django_filters',
 ]
 
